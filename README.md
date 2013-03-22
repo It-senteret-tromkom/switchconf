@@ -1,4 +1,4 @@
 switchconf
 ==========
 
-Konfigurering av mange swithcer via pythin script
+Konfigurering av mange swithcer via python script
