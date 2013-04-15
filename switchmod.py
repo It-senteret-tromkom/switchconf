@@ -13,7 +13,20 @@ import subprocess
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
 timeout = 5
 
-def pingTest(ipaddr):
+def user_pass():
+    # Brukernavn for tacacs bruker
+    tacacsUser = input('Entet tacacs username: ')
+    tacacsPassword = getpass.getpass()
+    
+    # Brukernavn for bruker konfigurert lokalt på switchen
+    noTacacsUser = input("Enter local (not tacacs) username: ")
+    noTacacsPassword = getpass.getpass()
+    
+    # Brukernavn for bruker konfigurert lokalt på switchen (gammel)
+    oldUser = input("Enter old local (not tacacs) username: ")
+    oldPassword = getpass.getpass()
+
+def ping_test(ipaddr):
     """Uses ping to test availability of network devices in subnet given
     
     Returns True on success else False """
@@ -39,7 +52,7 @@ def pingTest(ipaddr):
         logging.warning(msg)
         return False
 
-def runCmd(connection, cmdList):
+def run_cmd(connection, cmdList):
     """Running commands given in cmdList using connection
     
     Returns .. """
@@ -121,7 +134,7 @@ def tempfunc1(host, cmdlist):
     # Venter på angitt string og hvis ikke mottatt på x sekunder legges mottat string i s
     #s = tn.read_until("snorkelfore",timeout)
     (x, y, s) = tn.expect(["sjobing"], 1)
-    # Sjekker om det er tacacs brukernavn det spÃ¸rres etter
+    # Sjekker om det er tacacs brukernavn det spørres etter
     if tacacsStr in s:
         login(tn, host, tUser, tPassword)
             
@@ -141,8 +154,8 @@ def tempfunc1(host, cmdlist):
         print ("tja")
         sys.exit()
         
-     # Kjører kommando(er)
-    runCmd(tn, cmdlist)
+    # Kjører kommando(er)
+    run_cmd(tn, cmdlist)
     tn.write("exit\n")
     tn.close()
     return
