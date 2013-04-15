@@ -5,7 +5,6 @@ import getpass
 import sys
 import telnetlib
 import logging
-import argparse
 import re
 import ipaddress
 import subprocess
@@ -13,20 +12,26 @@ import subprocess
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
 timeout = 5
 
-def user_pass():
+def user_pass(tac, notac, old):
     # Dictionary to keep usernames and passwords
     userpassdict = {}
-    # Brukernavn for tacacs bruker
-    tacacsUser = input('Entet tacacs username: ')
-    tacacsPassword = getpass.getpass()
     
-    # Brukernavn for bruker konfigurert lokalt på switchen
-    noTacacsUser = input("Enter local (not tacacs) username: ")
-    noTacacsPassword = getpass.getpass()
+    if tac:
+        # Ask for tacacs user name and password
+        userpassdict['tacacsUser'] = input('Entet tacacs username: ')
+        userpassdict['tacacsPassword'] = getpass.getpass()
     
-    # Brukernavn for bruker konfigurert lokalt på switchen (gammel)
-    oldUser = input("Enter old local (not tacacs) username: ")
-    oldPassword = getpass.getpass()
+    if notac:
+        # Ask for locally configured username and password
+        userpassdict['noTacacsUser'] = input("Enter local (not tacacs) username: ")
+        userpassdict['noTacacsPassword'] = getpass.getpass()
+    
+    if old:
+        # Ask for old locally configured username and password
+        userpassdict['oldUser'] = input("Enter old local (not tacacs) username: ")
+        userpassdict['oldPassword'] = getpass.getpass()
+    
+    return userpassdict
 
 def ping_test(ipaddr):
     """Uses ping to test availability of network devices in subnet given
@@ -38,16 +43,19 @@ def ping_test(ipaddr):
         print(msg)
         logging.info(msg)
         return True
+    
     elif res == 1: # 1 = ingen svar eller færre enn 'count' (-c) antall pakker mottatt innen 'deadline' (-w)
         msg = "No response from", ipaddr
         print(msg)
         logging.warning(msg)
         return False
+    
     elif res == 2: # 2 = ping med andre feil
         msg = "Some ping error on", ipaddr
         print(msg)
         logging.warning(msg)
         return False
+    
     else:
         msg = "ping to ", ipaddr, "failed"
         print(msg)
@@ -65,7 +73,6 @@ def run_cmd(connection, cmdList):
         (index, match, text) = connection.expect(['\#$'], 5)
         matchObj = re.search(r'(hostname)*(.*)$', text)
         hn = matchObj.group(0)
-    #    print("HN: " + matchObj.group() + "\n")
         # Kjører kommando
         connection.write(cmd + "\n")
         (fys, fjas, result) = connection.expect([hn], 5) 
@@ -73,18 +80,22 @@ def run_cmd(connection, cmdList):
         if ('Invalid' in result):
             print ("## Command error. The following command is not working: " + cmd + "\nResult:\n" + result)
             logging.critical("Invalid command: " + cmd)
-            return
+            return False
         
         logging.info('Command %s and result: %s', i , result)
         i += 1
-    return
+    # Exists and closes connection
+    connection.write("exit\n")
+    connection.write("exit\n")
+    connection.close()
+    return True
 
-def login(conn, ip, userName, password):
+def _login(conn, ip, userName, password):
     """Logging in to the switch with given ip, username and password
     
     Returns int telling if the login was OK or not""" 
     conn.write(userName + "\n")
-        # Venter på string som spør etter passord
+    # Venter på string som spør etter passord
     passString = ["Password:", "password:"]
     (index, match, text) = conn.expect(passString, 5)
     # Hvis ingen treff på expect returneres index -1    
@@ -118,7 +129,7 @@ def login(conn, ip, userName, password):
         return 2
     return
     
-def tempfunc1(host, cmdlist):
+def connect(host, cmdlist, userpass):
     port = 23
     tacacsStr = 'username:'
     noTacacsStr = 'Username:'
@@ -134,30 +145,25 @@ def tempfunc1(host, cmdlist):
     # TODO: Legge til en sjekk av om telnet innlogging er OK eller om det må prøves med ssh istedet.
     
     # Venter på angitt string og hvis ikke mottatt på x sekunder legges mottat string i s
-    #s = tn.read_until("snorkelfore",timeout)
     (x, y, s) = tn.expect(["sjobing"], 1)
-    # Sjekker om det er tacacs brukernavn det spørres etter
-    if tacacsStr in s:
-        login(tn, host, tUser, tPassword)
-            
-    # Sjekker om det er lokal bruker det spørres etter
-    elif noTacacsStr in s:
-        loginResult = login(tn, host, ntUser, ntPassword)
+    if tacacsStr in s: # TACACS user?
+        _login(tn, host, userpass['tacasUser'], userpass['tacacsPassword'])
+        
+    elif noTacacsStr in s: # Local user?
+        loginResult = _login(tn, host, userpass['noTacacstUser'], userpass['noTacacsPassword'])
+        
         if(loginResult == 2):
-            loginResult = login(tn, host, ontUser, ontPassword)
+            loginResult = _login(tn, host, userpass['oldUser'], userpass['oldPassword'])
+            
             if(loginResult == 2):
                 # Gammelgammelt passord virket ikke det heller så vi avslutter
                 logging.error("OldOld password was invalid on %s", host)
                 print("OldOld password was invalid on " + host)
                 tn.close()
-                return
+                return False
                         
     elif s not in (tacacsStr, noTacacsStr):
         print ("tja")
         sys.exit()
-        
-    # Kjører kommando(er)
-    run_cmd(tn, cmdlist)
-    tn.write("exit\n")
-    tn.close()
-    return
+    
+    return tn

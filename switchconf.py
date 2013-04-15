@@ -30,9 +30,12 @@ import switchmod
 
 parser = argparse.ArgumentParser(description='Loops through all IPv4 addresses given and executes commands given in <commands>')
 group = parser.add_mutually_exclusive_group()
-group.add_argument('-i', '--hosts', help='file containing IP addresses of hosts')
+group.add_argument('-f', '--file', help='file containing IP addresses of hosts')
 group.add_argument('-a', '--address', help='subnet mask in CIDR notation, eg. 10.11.12.0/24 or single IP address')
 parser.add_argument('-c', '--commands', default='commands.txt', help='file containing the commands to run')
+parser.add_argument('-t', '--tacacsuser', help='ask for TACACS username and password')
+parser.add_argument('-l', '--localuser', help='ask for local username and password')
+parser.add_argument('-o', '--olduser', help='ask for old local username and password')
 args = parser.parse_args()
 
 # Sjekker om fila som skal inneholde kommandoer er tilgjengelig
@@ -42,16 +45,17 @@ except:
 	logging.error('The file %s seems to not exist', args.commands)
 	sys.exit("The commands file given seems to not exist")
 
-# Hvis det er gitt en fil med ip adresser legges disse i en liste.
-if args.hosts:
+# If a file with IP addresses is given
+if args.file:
 	try:
-		hostsfromfile = [line.strip() for line in open(args.hosts)]
+		hostsfromfile = [line.strip() for line in open(args.file)] # Make list
 	except:
-		logging.error('The file %s seems to not exist', args.hosts)
+		logging.error('The file %s seems to not exist', args.file)
 		sys.exit("The host file given seems to not exist")
 		
+	# Run commands on each IP in the file
 	for ip in hostsfromfile:
-		if switchmod.pingTest(ip):
+		if switchmod.ping_test(ip):
 			switchmod.tempfunc1(ip, commandlist)
 	
 # Hvis IP adresser er gitt med '-a'
@@ -71,18 +75,14 @@ if args.address:
 	except ValueError:
 		singleIP = False
 
-	#print(args.address)
-	#print(IPrange)
-	#print(singleIP)
-			
 	if IPrange:
 		for ip in IPrange.hosts():
 			stringIP = str(ip)
-			if switchmod.pingTest(stringIP):
+			if switchmod.ping_test(stringIP):
 				switchmod.tempfunc1(stringIP, commandlist)
 	elif singleIP:
 		stringIP = str(singleIP)
-		if switchmod.pingTest(stringIP):
+		if switchmod.ping_test(stringIP):
 			switchmod.tempfunc1(stringIP, commandlist)
 	else:
 		print('Invalid subnet or IP address.')
