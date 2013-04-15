@@ -27,9 +27,6 @@ import re
 import ipaddress
 import subprocess
 
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
-timeout = 5
-
 # Brukernavn for tacacs bruker
 #tUser = input('Entet tacacs username: ')
 #tPassword = getpass.getpass()

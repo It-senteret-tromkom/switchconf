@@ -1,6 +1,18 @@
 #!/usr/bin/python3.3
 # coding: iso-8859-15
 
+import getpass
+import sys
+import telnetlib
+import logging
+import argparse
+import re
+import ipaddress
+import subprocess
+
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
+timeout = 5
+
 def pingTest(ipaddr):
     """Uses ping to test availability of network devices in subnet given
     
