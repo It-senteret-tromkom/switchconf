@@ -14,6 +14,8 @@ logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='sw
 timeout = 5
 
 def user_pass():
+    # Dictionary to keep usernames and passwords
+    userpassdict = {}
     # Brukernavn for tacacs bruker
     tacacsUser = input('Entet tacacs username: ')
     tacacsPassword = getpass.getpass()
