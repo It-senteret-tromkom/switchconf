@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3.3
 # coding: iso-8859-15
 
 import getpass
@@ -8,27 +8,47 @@ import logging
 import argparse
 import re
 import ipaddress
+import subprocess
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
 timeout = 5
+
+# Brukernavn for tacacs bruker
+#tUser = input('Entet tacacs username: ')
+#tPassword = getpass.getpass()
+
+# Brukernavn for bruker konfigurert lokalt p� switchen
+#ntUser = input("Enter local (not tacacs) username: ")
+#ntPassword = getpass.getpass()
+
+# Brukernavn for bruker konfigurert lokalt p� switchen (gammel)
+#ontUser = input("Enter old local (not tacacs) username: ")
+#ontPassword = getpass.getpass()
 
 def pingTest(ipaddr):
 	"""Uses ping to test availability of network devices in subnet given
 	
 	Returns 0 on success else 1 """
-	
-	res = subprocess.call(['ping', '-c', '3', '-n', '-w', '1', '-q', ipaddr])
-	if res == 0:
-		print("ping to ", addr, "OK")
-		logging.info('ping to %s OK', addr)
+	res = subprocess.call(['ping', '-c', '3', '-n', '-w', '3', '-q', ipaddr])
+	if res == 0: # 0 = ping OK
+		msg = "ping to", ipaddr, "OK"
+		print(msg)
+		logging.info(msg)
 		return True
-	elif res == 2:
-		print("no response from", addr)
-		loggin.info('No response from %s', addr)
+	elif res == 1: # 1 = ingen svar eller f�rre enn 'count' (-c) antall pakker mottatt innen 'deadline' (-w)
+		msg = "No response from", ipaddr
+		print(msg)
+		logging.warning(msg)
+		return False
+	elif res == 2: # 2 = ping med andre feil
+		msg = "Some ping error on", ipaddr
+		print(msg)
+		logging.warning(msg)
 		return False
 	else:
-		print("ping to ", addr, "failed")
-		logging.warning('ping to %s failed', addr)
+		msg = "ping to ", ipaddr, "failed"
+		print(msg)
+		logging.warning(msg)
 		return False
 
 def runCmd(connection, cmdList):
@@ -134,7 +154,7 @@ def tempfunc1(host, cmdlist):
 		print ("tja")
 		sys.exit()
 		
-	 # Kjører kommando(er)
+	 # Kj�rer kommando(er)
 	runCmd(tn, cmdlist)
 	tn.write("exit\n")
 	tn.close()
@@ -147,69 +167,58 @@ group.add_argument('-a', '--address', help='subnet mask in CIDR notation, eg. 10
 parser.add_argument('-c', '--commands', default='commands.txt', help='file containing the commands to run')
 args = parser.parse_args()
 
+# Sjekker om fila som skal inneholde kommandoer er tilgjengelig
 try:
 	commandlist = [line.strip() for line in open(args.commands)]
 except:
 	logging.error('The file %s seems to not exist', args.commands)
-	sys.exit("The command file given seems to not exist")
+	sys.exit("The commands file given seems to not exist")
 
-# Brukernavn for tacacs bruker
-tUser = input("Entet tacacs username: ")
-tPassword = getpass.getpass()
-
-# Brukernavn for bruker konfigurert lokalt på switchen
-#ntUser = input("Enter local (not tacacs) username: ")
-#ntPassword = getpass.getpass()
-
-# Brukernavn for bruker konfigurert lokalt på switchen (gammel)
-#ontUser = input("Enter old local (not tacacs) username: ")
-#ontPassword = getpass.getpass()
-
-# Hvis det er gitt en fil med liste over ip adresser legges disse i en liste.
+# Hvis det er gitt en fil med ip adresser legges disse i en liste.
 if args.hosts:
 	try:
-		hostlist = [line.strip() for line in open(args.hosts)]
+		hostsfromfile = [line.strip() for line in open(args.hosts)]
 	except:
 		logging.error('The file %s seems to not exist', args.hosts)
 		sys.exit("The host file given seems to not exist")
 	
-	# Går igjennom alle IPene i lista
-	for ip in hostlist:
-		# Sjekker om dings med IP svarer på ping
-		if pingTest(ip):
-			# Hvis svar på ping; kjør på
-			tempfunc1(ip, commandlist)
-	sys.exit()
-
+# Hvis IP adresser er gitt med '-a'
 if args.address:
-	iprange = True
+	IPrange = True
 	singleIP = True
 	
-	# TODO: Bruk args.address.num_addresses for å finne ut om det er 1 eller flere adresser.
-	# Bruk try til dette for å finne ut om det er gitt en gyldig IP/subnet
-	#  
-	
-	
 	try:
-		iprange = ipaddress.ip_network(args.address) # Er dette en subnet maske?
+		IPrange = ipaddress.ip_network(args.address) # Er dette en subnet maske?
+		if IPrange.num_addresses < 2:
+			IPrange = False
 	except ValueError:
-		iprange = False
-		
+		IPrange = False
+
 	try:
-		ipaddr = ipaddress.ip_address(args.address) # Er dette en enkel IP adresse?
+		singleIP = ipaddress.ip_address(args.address) # Er dette en enkel IP adresse?
 	except ValueError:
 		singleIP = False
 
-	print(args.address)
-	print(iprange)
-	print(singleIP)
-	sys.exit()
-	
-	if not (iprange or singleIP):
+	#print(args.address)
+	#print(IPrange)
+	#print(singleIP)
+			
+	if IPrange:
+		for ip in IPrange.hosts():
+			stringIP = str(ip)
+			if pingTest(stringIP):
+				tempfunc1(stringIP, commandlist)
+	elif singleIP:
+		stringIP = str(singleIP)
+		if pingTest(stringIP):
+			tempfunc1(stringIP, commandlist)
+	else:
 		print('Invalid subnet or IP address.')
 		sys.exit()
-
-for ip in hostlist:
-	if pingTest(ipaddr):
-		tempfunc1(ip, commandlist)
+	
+if args.hosts:
+	hostsfromfile = args.hosts	
+	for ip in hostsfromfile:
+		if pingTest(ip):
+			tempfunc1(ip, commandlist)
 sys.exit()
