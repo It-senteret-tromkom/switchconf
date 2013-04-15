@@ -26,20 +26,7 @@ import argparse
 import re
 import ipaddress
 import subprocess
-
-# Brukernavn for tacacs bruker
-#tUser = input('Entet tacacs username: ')
-#tPassword = getpass.getpass()
-
-# Brukernavn for bruker konfigurert lokalt på switchen
-#ntUser = input("Enter local (not tacacs) username: ")
-#ntPassword = getpass.getpass()
-
-# Brukernavn for bruker konfigurert lokalt på switchen (gammel)
-#ontUser = input("Enter old local (not tacacs) username: ")
-#ontPassword = getpass.getpass()
-
-
+import switchmod
 
 parser = argparse.ArgumentParser(description='Loops through all IPv4 addresses given and executes commands given in <commands>')
 group = parser.add_mutually_exclusive_group()
@@ -62,6 +49,10 @@ if args.hosts:
 	except:
 		logging.error('The file %s seems to not exist', args.hosts)
 		sys.exit("The host file given seems to not exist")
+		
+	for ip in hostsfromfile:
+		if switchmod.pingTest(ip):
+			switchmod.tempfunc1(ip, commandlist)
 	
 # Hvis IP adresser er gitt med '-a'
 if args.address:
@@ -87,19 +78,14 @@ if args.address:
 	if IPrange:
 		for ip in IPrange.hosts():
 			stringIP = str(ip)
-			if pingTest(stringIP):
-				tempfunc1(stringIP, commandlist)
+			if switchmod.pingTest(stringIP):
+				switchmod.tempfunc1(stringIP, commandlist)
 	elif singleIP:
 		stringIP = str(singleIP)
-		if pingTest(stringIP):
-			tempfunc1(stringIP, commandlist)
+		if switchmod.pingTest(stringIP):
+			switchmod.tempfunc1(stringIP, commandlist)
 	else:
 		print('Invalid subnet or IP address.')
 		sys.exit()
 	
-if args.hosts:
-	hostsfromfile = args.hosts	
-	for ip in hostsfromfile:
-		if pingTest(ip):
-			tempfunc1(ip, commandlist)
 sys.exit()
