@@ -1,5 +1,1 @@
-conf t
-snmp-s com tksnmp rw
-do wr mem
-exit
-exit
+sh env all

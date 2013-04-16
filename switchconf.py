@@ -1,5 +1,5 @@
-#!/usr/bin/python3.3
-# coding: iso-8859-15
+#!/opt/python3.3/bin/python3.3 
+# coding: iso-8859-15 
 
 '''
 switchmod -- shortdesc
@@ -57,10 +57,6 @@ askpassd['tac'] = args.tacacsuser
 askpassd['notac'] = args.localuser
 askpassd['old'] = args.olduser  
 
-def run(askpassd, ip):
-	userpassd = switchmod.user_pass(askpassd)
-	switchmod.do_conf(ip, commandlist, userpassd)
-
 # If a file with IP addresses is given
 if args.file:
 	try:
@@ -68,10 +64,11 @@ if args.file:
 	except:
 		logging.error('The file %s seems to not exist', args.file)
 		sys.exit("The host file given seems to not exist")
-		
+	
+	userpassd = switchmod.user_pass(askpassd)
 	# Run commands on each IP in the file
 	for ip in hostsfromfile:
-		run(askpassd, ip)
+		switchmod.do_conf(ip, commandlist, userpassd)
 	
 # Hvis IP adresser er gitt med '-a'
 if args.address:
@@ -91,13 +88,15 @@ if args.address:
 		singleIP = False
 
 	if IPrange:
+		userpassd = switchmod.user_pass(askpassd)
 		for ip in IPrange.hosts():
 			stringIP = str(ip)
-			run(askpassd, stringIP)
+			switchmod.do_conf(stringIP, commandlist, userpassd)
 			
 	elif singleIP:
 		stringIP = str(singleIP)
-		run(askpassd, stringIP)
+		userpassd = switchmod.user_pass(askpassd)
+		switchmod.do_conf(stringIP, commandlist, userpassd)
 		
 	else:
 		print('Invalid subnet or IP address.')
