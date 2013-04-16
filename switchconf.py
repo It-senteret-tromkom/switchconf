@@ -24,14 +24,20 @@ import argparse
 import ipaddress
 import switchmod
 
-parser = argparse.ArgumentParser(description='Loops through all IPv4 addresses given and executes commands given in <commands>')
+parser = argparse.ArgumentParser(description=
+								'Loops through all IPv4 addresses given and executes commands given in <commands>')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-f', '--file', help='file containing IP addresses of hosts')
-group.add_argument('-a', '--address', help='subnet mask in CIDR notation, eg. 10.11.12.0/24 or single IP address')
-parser.add_argument('-c', '--commands', default='commands.txt', help='file containing the commands to run')
-parser.add_argument('-t', '--tacacsuser', help='ask for TACACS username and password')
-parser.add_argument('-l', '--localuser', help='ask for local username and password')
-parser.add_argument('-o', '--olduser', help='ask for old local username and password')
+group.add_argument('-a', '--address',
+					help='subnet mask in CIDR notation, eg. 10.11.12.0/24 or single IP address')
+parser.add_argument('-c', '--commands',
+					default='commands.txt', help='file containing the commands to run')
+parser.add_argument('-t', '--tacacsuser', help='ask for TACACS username and password', 
+					action="store_true")
+parser.add_argument('-l', '--localuser', help='ask for local username and password',
+					action="store_true")
+parser.add_argument('-o', '--olduser', help='ask for old local username and password',
+					action="store_true")
 args = parser.parse_args()
 
 # If not argument is given, print help and exit
@@ -45,16 +51,14 @@ try:
 except:
 	logging.error('The file %s seems to not exist', args.commands)
 	sys.exit("The commands file given seems to not exist")
-	
-if args.tacacsuser:
-	tac = True
-if args.localuser:
-	notac = True
-if args.olduser:
-	old = True
 
-def run(tac, notac, old, ip):
-	userpassd = switchmod.user_pass(tac, notac, old)
+askpassd = {}
+askpassd['tac'] = args.tacacsuser
+askpassd['notac'] = args.localuser
+askpassd['old'] = args.olduser  
+
+def run(askpassd, ip):
+	userpassd = switchmod.user_pass(askpassd)
 	switchmod.do_conf(ip, commandlist, userpassd)
 
 # If a file with IP addresses is given
@@ -67,7 +71,7 @@ if args.file:
 		
 	# Run commands on each IP in the file
 	for ip in hostsfromfile:
-		run(tac, notac, old, ip)
+		run(askpassd, ip)
 	
 # Hvis IP adresser er gitt med '-a'
 if args.address:
@@ -89,11 +93,11 @@ if args.address:
 	if IPrange:
 		for ip in IPrange.hosts():
 			stringIP = str(ip)
-			run(tac, notac, old, stringIP)
+			run(askpassd, stringIP)
 			
 	elif singleIP:
 		stringIP = str(singleIP)
-		run(tac, notac, old, stringIP)
+		run(askpassd, stringIP)
 		
 	else:
 		print('Invalid subnet or IP address.')

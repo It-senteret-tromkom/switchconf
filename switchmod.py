@@ -6,27 +6,29 @@ import sys
 import telnetlib
 import logging
 import re
-import ipaddress
 import subprocess
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
 timeout = 5
 
-def user_pass(tac, notac, old):
+def user_pass(askpassd):
+    """Prompts for username and password
+    
+    Returns a dictionary with usernames and passwords"""
     # Dictionary to keep usernames and passwords
     userpassdict = {}
     
-    if tac:
+    if (askpassd['tac']):
         # Ask for tacacs user name and password
         userpassdict['tacacsUser'] = input('Entet tacacs username: ')
         userpassdict['tacacsPassword'] = getpass.getpass()
     
-    if notac:
+    if (askpassd['notac']):
         # Ask for locally configured username and password
         userpassdict['noTacacsUser'] = input("Enter local (not tacacs) username: ")
         userpassdict['noTacacsPassword'] = getpass.getpass()
     
-    if old:
+    if (askpassd['old']):
         # Ask for old locally configured username and password
         userpassdict['oldUser'] = input("Enter old local (not tacacs) username: ")
         userpassdict['oldPassword'] = getpass.getpass()
