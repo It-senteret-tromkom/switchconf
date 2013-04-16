@@ -18,14 +18,10 @@ It defines classes_and_methods
 @deffield    updated: Updated
 '''
 
-import getpass
 import sys
-import telnetlib
 import logging
 import argparse
-import re
 import ipaddress
-import subprocess
 import switchmod
 
 parser = argparse.ArgumentParser(description='Loops through all IPv4 addresses given and executes commands given in <commands>')
@@ -44,6 +40,17 @@ try:
 except:
 	logging.error('The file %s seems to not exist', args.commands)
 	sys.exit("The commands file given seems to not exist")
+	
+if args.tacacsuser:
+	tac = True
+if args.localuser:
+	notac = True
+if args.olduser:
+	old = True
+
+def run(tac, notac, old, ip):
+	userpassd = switchmod.user_pass(tac, notac, old)
+	switchmod.do_conf(ip, commandlist, userpassd)
 
 # If a file with IP addresses is given
 if args.file:
@@ -55,8 +62,7 @@ if args.file:
 		
 	# Run commands on each IP in the file
 	for ip in hostsfromfile:
-		if switchmod.ping_test(ip):
-			switchmod.tempfunc1(ip, commandlist)
+		run(tac, notac, old, ip)
 	
 # Hvis IP adresser er gitt med '-a'
 if args.address:
@@ -78,14 +84,14 @@ if args.address:
 	if IPrange:
 		for ip in IPrange.hosts():
 			stringIP = str(ip)
-			if switchmod.ping_test(stringIP):
-				switchmod.tempfunc1(stringIP, commandlist)
+			run(tac, notac, old, stringIP)
+			
 	elif singleIP:
 		stringIP = str(singleIP)
-		if switchmod.ping_test(stringIP):
-			switchmod.tempfunc1(stringIP, commandlist)
+		run(tac, notac, old, stringIP)
+		
 	else:
 		print('Invalid subnet or IP address.')
 		sys.exit()
-	
+
 sys.exit()

@@ -33,7 +33,7 @@ def user_pass(tac, notac, old):
     
     return userpassdict
 
-def ping_test(ipaddr):
+def _ping_test(ipaddr):
     """Uses ping to test availability of network devices in subnet given
     
     Returns True on success else False """
@@ -62,7 +62,7 @@ def ping_test(ipaddr):
         logging.warning(msg)
         return False
 
-def run_cmd(connection, cmdList):
+def _run_cmd(connection, cmdList):
     """Running commands given in cmdList using connection
     
     Returns .. """
@@ -127,9 +127,8 @@ def _login(conn, ip, userName, password):
     if (index > 1):
         logging.error('%s: Invalid login.', ip)
         return 2
-    return
-    
-def connect(host, cmdlist, userpass):
+        
+def _connect(host, userpass):
     port = 23
     tacacsStr = 'username:'
     noTacacsStr = 'Username:'
@@ -141,7 +140,7 @@ def connect(host, cmdlist, userpass):
     except:
         logging.warning('Connection error to host %s on port %s', host, port)
         print("\nConnection error to host " + host + "\n")
-        return
+        return False
     # TODO: Legge til en sjekk av om telnet innlogging er OK eller om det må prøves med ssh istedet.
     
     # Venter på angitt string og hvis ikke mottatt på x sekunder legges mottat string i s
@@ -167,3 +166,18 @@ def connect(host, cmdlist, userpass):
         sys.exit()
     
     return tn
+
+def do_conf(ip, cmdlist, updict):
+    """Tries to connect and log into given IP address using usernames and 
+    passwords in updict (dictionary) and runs command(s) in the commands list
+    
+    Returns xx"""
+    # If no answer to ping there is no need to try to connect and run commands
+    if (_ping_test(ip)):
+        con = _connect(ip, updict)
+        if (con):
+            cmd_success = _run_cmd(con, cmdlist)
+            return cmd_success
+    else:
+        return False         
+    
