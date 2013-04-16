@@ -34,6 +34,11 @@ parser.add_argument('-l', '--localuser', help='ask for local username and passwo
 parser.add_argument('-o', '--olduser', help='ask for old local username and password')
 args = parser.parse_args()
 
+# If not argument is given, print help and exit
+if (len(sys.argv) == 1):
+	parser.print_help()
+	sys.exit(1)
+
 # Sjekker om fila som skal inneholde kommandoer er tilgjengelig
 try:
 	commandlist = [line.strip() for line in open(args.commands)]
