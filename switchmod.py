@@ -82,7 +82,7 @@ def _run_cmd(connection, cmdList):
     for cmd in cmdList:
         # TODO: Sjekke om kommandoen ikke er i FY lista
         if (cmd in blacklist):
-            loggin.error("Command ")
+            loggin.error("Command 2")
             return False
         cmd = cmd.encode('utf8')
         connection.write(b"show running-config | i hostname\n")
