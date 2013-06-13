@@ -1,14 +1,33 @@
 #!/usr/bin/python3.3
 # coding: iso-8859-15
 
+import os
 import getpass
 import sys
 import telnetlib
 import logging
 import re
 import subprocess
+from concurrent.futures._base import LOGGER
+from subprocess import STDOUT
 
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
+# Set up logging to file
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s: %(message)s', #   %(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                 #   datefmt='%m-%d %H:%M',
+                    filename='info.log',
+                    filemode='w')
+# Define a Handler which writes INFO messages or higher to the sys.stderr
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+# Set a format which is simpler for console use
+formatter = logging.Formatter('%(levelname)-8s %(message)s')
+# Tell the handler to use this format
+console.setFormatter(formatter)
+# Add the handler to the root logger
+logging.getLogger('').addHandler(console)
+
+##logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s',filename='switchconf.log',level=logging.DEBUG)
 timeout = 5
 
 def user_pass(askpassd):
@@ -48,28 +67,27 @@ def _ping_test(ipaddr):
     """Uses ping to test availability of network devices in subnet given
     
     Returns True on success else False """
-    res = subprocess.call(['ping', '-c', '3', '-n', '-w', '3', '-q', ipaddr])
+    FNULL = open(os.devnull, 'w')
+    # TODO: Use subprocess.check_call instead
+    res = subprocess.call(['ping', '-c', '3', '-n', '-w', '3', '-q', ipaddr], stdout=FNULL, stderr=subprocess.STDOUT)
     if res == 0: # 0 = ping OK
         msg = "ping to", ipaddr, "OK"
-        print(msg)
         logging.info(msg)
         return True
     
     elif res == 1: # 1 = ingen svar eller færre enn 'count' (-c) antall pakker mottatt innen 'deadline' (-w)
-        msg = "No response from", ipaddr
-        print(msg)
+        msg = "No ping response from", ipaddr
+        #print(msg)
         logging.info(msg)
         return False
     
     elif res == 2: # 2 = ping med andre feil
         msg = "Some ping error on", ipaddr
-        print(msg)
         logging.warning(msg)
         return False
     
     else:
         msg = "ping to ", ipaddr, "failed"
-        print(msg)
         logging.warning(msg)
         return False
 
@@ -205,7 +223,7 @@ def do_conf(ip, cmdlist, updict):
     
     Returns xx"""
     # If no answer to ping there is no need to try to connect and run commands
-    logging.info("------------------ %s --------------------", ip)
+    logging.debug("------------------ %s --------------------", ip)
     if (_ping_test(ip)):
         con = _connect(ip, updict)
         if (con):
