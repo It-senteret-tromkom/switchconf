@@ -99,9 +99,9 @@ def _run_cmd(connection, cmdList):
     
     for cmd in cmdList:
         # TODO: Sjekke om kommandoen ikke er i FY lista
-        if (cmd in blacklist):
-            loggin.error("Command 2")
-            return False
+      #  if (cmd in blacklist):
+       #     logging.error("Command 2")
+        #    return False
         cmd = cmd.encode('utf8')
         connection.write(b"show running-config | i hostname\n")
         (index, match, text) = connection.expect([b'\#$'], 5)
@@ -118,7 +118,6 @@ def _run_cmd(connection, cmdList):
             return False
         
         logging.info('Command %s and result: %s', i , result.decode('utf8'))
-        print(result.decode('utf8'))
         i += 1
     # Exists and closes connection
     connection.write("exit\n".encode('utf8'))
@@ -148,7 +147,6 @@ def _login(conn, ip, userName, password):
     # Hvis ingen treff på expect returneres index -1    
     if (index == -1):
         logging.error("Password timeout on %s", ip )
-        print(("Password timeout on " + ip + "\n"))
         return 1
     # Sender passord
     conn.write(strpassword)
@@ -208,13 +206,11 @@ def _connect(host, userpass):
             if(loginResult == 2):
                 # Gammelgammelt passord virket ikke det heller så vi avslutter
                 logging.error("OldOld password was invalid on %s", host)
-                print(("OldOld password was invalid on " + host))
                 tn.close()
                 return False
                         
     elif str(s) not in (tacacsStr, noTacacsStr):
         logging.warning("Not possible to log in")
-        print ("Not possible to log in")
         return False
     
 def do_conf(ip, cmdlist, updict):
@@ -223,7 +219,7 @@ def do_conf(ip, cmdlist, updict):
     
     Returns xx"""
     # If no answer to ping there is no need to try to connect and run commands
-    logging.debug("------------------ %s --------------------", ip)
+    logging.debug("## ------------------ %s -------------------- ##", ip)
     if (_ping_test(ip)):
         con = _connect(ip, updict)
         if (con):
