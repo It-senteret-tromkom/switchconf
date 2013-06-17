@@ -3,13 +3,12 @@
 
 import os
 import getpass
-import sys
 import telnetlib
 import logging
 import re
 import subprocess
-from concurrent.futures._base import LOGGER
-from subprocess import STDOUT
+#from concurrent.futures._base import LOGGER
+#from subprocess import STDOUT
 
 # Set up logging to file
 logging.basicConfig(level=logging.DEBUG,
@@ -69,16 +68,16 @@ def _ping_test(ipaddr):
     Returns True on success else False """
     FNULL = open(os.devnull, 'w')
     # TODO: Use subprocess.check_call instead
-    res = subprocess.call(['ping', '-c', '3', '-n', '-w', '3', '-q', ipaddr], stdout=FNULL, stderr=subprocess.STDOUT)
+    res = subprocess.call(['ping', '-c', '2', '-n', '-w', '2', '-q', ipaddr], stdout=FNULL, stderr=subprocess.STDOUT)
     if res == 0: # 0 = ping OK
         msg = "ping to", ipaddr, "OK"
-        logging.info(msg)
+        logging.debug(msg)
         return True
     
     elif res == 1: # 1 = ingen svar eller færre enn 'count' (-c) antall pakker mottatt innen 'deadline' (-w)
         msg = "No ping response from", ipaddr
         #print(msg)
-        logging.info(msg)
+        logging.debug(msg)
         return False
     
     elif res == 2: # 2 = ping med andre feil
@@ -103,7 +102,7 @@ def _run_cmd(connection, cmdList):
        #     logging.error("Command 2")
         #    return False
         cmd = cmd.encode('utf8')
-        connection.write(b"show running-config | i hostname\n")
+        connection.write("show running-config | i hostname\n".encode('utf8'))
         (index, match, text) = connection.expect([b'\#$'], 5)
         matchObj = re.search(b'(hostname)*(.*)$', text)
         hn = matchObj.group(0)
@@ -113,11 +112,12 @@ def _run_cmd(connection, cmdList):
         (fys, fjas, result) = connection.expect([hn], 5) 
         
         if (b'Invalid' in result):
-            print("## Command error. The following command is not working: " + cmd.decode('utf8') + "\nResult:\n" + result.decode('utf8'))
             logging.critical("Invalid command: " + cmd.decode('utf8'))
             return False
         
-        logging.info('Command %s and result: %s', i , result.decode('utf8'))
+        logging.info('----- Command %s start -----', i)
+        logging.info(result.decode('utf8'))
+        logging.info('----- Command %s end -----', i)
         i += 1
     # Exists and closes connection
     connection.write("exit\n".encode('utf8'))
@@ -155,20 +155,21 @@ def _login(conn, ip, userName, password):
     loginResult = [b"\#$", b"\>$", b"invalid", b"username:", b"Username:", b"failed", b"Enter old password"]
     (index, matchObject, receivedText) = conn.expect(loginResult,timeout)
     if (index == 0):
-        logging.info('%s: Login OK', ip)
+        logging.info('##### Login OK on %s #####', ip)
         return 0
     if (index == 1):
-        conn.write("enable\n")
-        conn.write(password + "\n")
+        conn.write("enable\n".encode('utf8'))
+        conn.write(strpassword)
+        conn.write('\n'.encode('utf8'))
         # Hvis det spørres etter passord enda engang er enable passordet feil
-        enableResult = ["\#$", "foo"]
+        enableResult = [b"\#$", b"foo"]
         (index, matchObject, receivedText) = conn.expect(enableResult,timeout)
         print (receivedText)
         if (index == 1):
             logging.error("Enable passoword is wrong on %s", ip)
             print(("Enable password is wrong on " + ip))
             return 1
-        logging.info('%s: > enable OK', ip)
+        logging.debug('%s: > enable OK', ip)
         return 0
     if (index > 1):
         logging.error('%s: Invalid login.', ip)
@@ -183,8 +184,7 @@ def _connect(host, userpass):
     try:
         tn = telnetlib.Telnet(host, port, timeout)
     except:
-        logging.warning('Connection error to host %s on port %s', host, port)
-        print(("\nConnection error to host " + host + "\n"))
+        logging.info('Cant connect to %s on port %s. Probably no telnet support on device.', host, port)
         return False
     # TODO: Legge til en sjekk av om telnet innlogging er OK eller om det må prøves med ssh istedet.
     
@@ -197,20 +197,24 @@ def _connect(host, userpass):
         else:
             return False
         
-    elif ( (noTacacsStr in str(s)) and (userpass['noTacacsUser'] != False) ): # Local user?
+    elif ( (noTacacsStr in str(s)) and (userpass['noTacacsUser'] == True) ): # Local user?
         loginResult = _login(tn, host, userpass['noTacacsUser'], userpass['noTacacsPassword'])
+        if (loginResult == 0):
+            return tn
         
-        if(loginResult == 2):
+        elif( (loginResult == 2) and (userpass['oldUser'])):
             loginResult = _login(tn, host, userpass['oldUser'], userpass['oldPassword'])
-            
-            if(loginResult == 2):
+            if (loginResult == 0):
+                return tn
+        
+            elif(loginResult == 2):
                 # Gammelgammelt passord virket ikke det heller så vi avslutter
                 logging.error("OldOld password was invalid on %s", host)
                 tn.close()
                 return False
                         
     elif str(s) not in (tacacsStr, noTacacsStr):
-        logging.warning("Not possible to log in")
+        logging.info("Not possible to log in to %s. It might not be a Cisco switch.", host)
         return False
     
 def do_conf(ip, cmdlist, updict):
