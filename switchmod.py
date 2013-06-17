@@ -11,7 +11,7 @@ import subprocess
 #from subprocess import STDOUT
 
 # Set up logging to file
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s: %(message)s', #   %(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                  #   datefmt='%m-%d %H:%M',
                     filename='info.log',
@@ -68,7 +68,7 @@ def _ping_test(ipaddr):
     Returns True on success else False """
     FNULL = open(os.devnull, 'w')
     # TODO: Use subprocess.check_call instead
-    res = subprocess.call(['ping', '-c', '2', '-n', '-w', '2', '-q', ipaddr], stdout=FNULL, stderr=subprocess.STDOUT)
+    res = subprocess.call(['ping', '-c', '3', '-n', '-w', '1', '-q', ipaddr], stdout=FNULL, stderr=subprocess.STDOUT)
     if res == 0: # 0 = ping OK
         msg = "ping to", ipaddr, "OK"
         logging.debug(msg)
@@ -103,21 +103,21 @@ def _run_cmd(connection, cmdList):
         #    return False
         cmd = cmd.encode('utf8')
         connection.write("show running-config | i hostname\n".encode('utf8'))
-        (index, match, text) = connection.expect([b'\#$'], 5)
+        (index, match, text) = connection.expect([b'\#$'], 3)
         matchObj = re.search(b'(hostname)*(.*)$', text)
         hn = matchObj.group(0)
         # Kjører kommando
         connection.write(cmd)
         connection.write('\n'.encode('utf8'))
-        (fys, fjas, result) = connection.expect([hn], 5) 
+        (fys, fjas, result) = connection.expect([hn], 3) 
         
         if (b'Invalid' in result):
-            logging.critical("Invalid command: " + cmd.decode('utf8'))
+            logging.error("Invalid command: " + cmd.decode('utf8') + '\n')
             return False
         
         logging.info('----- Command %s start -----', i)
         logging.info(result.decode('utf8'))
-        logging.info('----- Command %s end -----', i)
+        logging.info('----- Command %s end -----\n', i)
         i += 1
     # Exists and closes connection
     connection.write("exit\n".encode('utf8'))
