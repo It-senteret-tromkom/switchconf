@@ -68,7 +68,7 @@ def _ping_test(ipaddr):
     Returns True on success else False """
     FNULL = open(os.devnull, 'w')
     # TODO: Use subprocess.check_call instead
-    res = subprocess.call(['ping', '-c', '3', '-n', '-w', '1', '-q', ipaddr], stdout=FNULL, stderr=subprocess.STDOUT)
+    res = subprocess.call(['ping', '-c', '3', '-n', '-w', '2', '-q', '-i', '0.3', ipaddr], stdout=FNULL, stderr=subprocess.STDOUT)
     if res == 0: # 0 = ping OK
         msg = "ping to", ipaddr, "OK"
         logging.debug(msg)
@@ -96,6 +96,7 @@ def _run_cmd(connection, cmdList):
     Returns .. """
     i = 0
     
+    logging.debug('Running commands in command list.')
     for cmd in cmdList:
         # TODO: Sjekke om kommandoen ikke er i FY lista
       #  if (cmd in blacklist):
@@ -103,21 +104,19 @@ def _run_cmd(connection, cmdList):
         #    return False
         cmd = cmd.encode('utf8')
         connection.write("show running-config | i hostname\n".encode('utf8'))
-        (index, match, text) = connection.expect([b'\#$'], 3)
+        (index, match, text) = connection.expect([b'\#$'], 2)
         matchObj = re.search(b'(hostname)*(.*)$', text)
         hn = matchObj.group(0)
         # Kjører kommando
         connection.write(cmd)
         connection.write('\n'.encode('utf8'))
-        (fys, fjas, result) = connection.expect([hn], 3) 
+        (fys, fjas, result) = connection.expect([hn], 2) 
         
         if (b'Invalid' in result):
             logging.error("Invalid command: " + cmd.decode('utf8') + '\n')
             return False
         
-        logging.info('----- Command %s start -----', i)
         logging.info(result.decode('utf8'))
-        logging.info('----- Command %s end -----\n', i)
         i += 1
     # Exists and closes connection
     connection.write("exit\n".encode('utf8'))
