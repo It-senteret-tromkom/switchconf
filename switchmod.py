@@ -7,11 +7,12 @@ import telnetlib
 import logging
 import re
 import subprocess
+from idlelib.RstripExtension import RstripExtension
 #from concurrent.futures._base import LOGGER
 #from subprocess import STDOUT
 
 # Set up logging to file
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s: %(message)s', #   %(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                  #   datefmt='%m-%d %H:%M',
                     filename='info.log',
@@ -96,27 +97,35 @@ def _run_cmd(connection, cmdList):
     Returns .. """
     i = 0
     
+    # Get hostname
+    # TODO: Move this to antoher function.
+    connection.write(b"\n")
+    text = connection.read_until(b"#", 10)
+    text = text.decode('ascii')
+    matchObj = re.search('.*$', text)
+    hn = matchObj.group(0)
+    hostname = hn.rstrip('#')
+    logging.debug('-------------------- %s --------------------', hostname)
+       
     logging.debug('Running commands in command list.')
     for cmd in cmdList:
-        # TODO: Sjekke om kommandoen ikke er i FY lista
+      # TODO: Sjekke om kommandoen ikke er i FY lista
       #  if (cmd in blacklist):
-       #     logging.error("Command 2")
-        #    return False
+      #     logging.error("Command 2")
+      #    return False
         cmd = cmd.encode('utf8')
-        connection.write("show running-config | i hostname\n".encode('utf8'))
-        (index, match, text) = connection.expect([b'\#$'], 2)
-        matchObj = re.search(b'(hostname)*(.*)$', text)
-        hn = matchObj.group(0)
-        # Kjører kommando
-        connection.write(cmd)
-        connection.write('\n'.encode('utf8'))
-        (fys, fjas, result) = connection.expect([hn], 2) 
         
+        # Kjører kommando
+        connection.write(cmd + b'\n')
+        # Waits until the command has completed (hostname is displayed) or for 15 seconds
+        result = connection.read_until(hostname.encode('utf8'), 15)
+
         if (b'Invalid' in result):
             logging.error("Invalid command: " + cmd.decode('utf8') + '\n')
             return False
         
-        logging.info(result.decode('utf8'))
+        logging.info(cmd)
+        logging.debug(result.decode('utf8'))
         i += 1
     # Exists and closes connection
     connection.write("exit\n".encode('utf8'))
@@ -171,7 +180,7 @@ def _login(conn, ip, userName, password):
         logging.debug('%s: > enable OK', ip)
         return 0
     if (index > 1):
-        logging.error('%s: Invalid login.', ip)
+        logging.error('%s: Invalid login. Maybe wrong password.', ip)
         return 2
         
 def _connect(host, userpass):

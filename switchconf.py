@@ -89,14 +89,22 @@ if args.address:
 
 	if IPrange:
 		userpassd = switchmod.user_pass(askpassd)
+		i = 0
 		for ip in IPrange.hosts():
 			stringIP = str(ip)
-			switchmod.do_conf(stringIP, commandlist, userpassd)
+			cmdresult = switchmod.do_conf(stringIP, commandlist, userpassd)
+			if cmdresult == False:
+				i += 1
+				if i > 4:
+					print("Working... ", ip)
+					i = 0
+		print('Finished')
 			
 	elif singleIP:
 		stringIP = str(singleIP)
 		userpassd = switchmod.user_pass(askpassd)
 		switchmod.do_conf(stringIP, commandlist, userpassd)
+		print('Finished')
 		
 	else:
 		print('Invalid subnet or IP address.')
